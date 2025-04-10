@@ -8,6 +8,7 @@ trigger:
 
 pool:
   vmImage: 'windows-latest'
+  name: Self-Hosted-COMP367-Agent
 
 variables:
   solution: '**/*.sln'
