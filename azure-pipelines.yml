@@ -1,0 +1,64 @@
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+trigger:
+- main
+
+pool:
+  vmImage: 'windows-latest'
+  name: COMP367-Self-Hosted-Agent
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+  version: '1.0.0.$(Build.BuildId)'  # ✅ Auto-increment with Build ID
+
+steps:
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+    
+- task: DotNetCoreCLI@2
+  displayName: Dotnet restore
+  inputs:
+    command: 'restore'
+    projects: '**/*.csproj'
+
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)"'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+- task: VSTest@2
+  inputs:
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+    
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'ClassLibraryProjets'
+    publishLocation: 'Container'
+
+- task: DotNetCoreCLI@2
+  displayName: Dotnet Package
+  inputs:
+    command: 'pack'
+    projects: '**/*.csproj'
+    configuration: 'Release'
+    arguments: '--output $(Build.ArtifactStagingDirectory) --property:Version=$(version)'
+    
+- task: NuGetCommand@2
+  displayName: NuGet push to artifact nuget feeds
+  inputs:
+    command: push
+    packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg'
+    nuGetFeedType: 'internal'
+    feedPublish: jasp_quiz4_agile/COMP367QUIZ4 #0e763e4c-ec4b-47c8-a852-e71610ccdb6c
